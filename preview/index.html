@@ -196,6 +196,15 @@ body.edit .td-img::after{content:'✎';position:absolute;top:4px;right:3px;backg
 .cd-clear{background:none;border:1px solid var(--border);cursor:pointer;color:var(--text-muted);padding:5px 9px;border-radius:6px;display:flex;align-items:center;gap:5px;font-family:inherit;font-size:11.5px;font-weight:500;transition:all .15s}
 .cd-clear:hover{background:#fef2f2;color:#dc2626;border-color:#fca5a5}
 
+/* Info banner */
+.info-banner{display:flex;align-items:flex-start;gap:12px;padding:14px 18px;margin-bottom:18px;background:linear-gradient(135deg, var(--accent-soft) 0%, #FFF 100%);border:1px solid #DBEAFE;border-radius:12px;border-left:3px solid var(--accent)}
+.ib-icon{flex-shrink:0;width:32px;height:32px;border-radius:8px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center}
+.ib-text{flex:1;display:flex;flex-direction:column;gap:3px;line-height:1.45}
+.ib-text strong{font-size:13.5px;color:var(--text);font-weight:700;letter-spacing:-0.005em}
+.ib-text span{font-size:12.5px;color:var(--text-muted)}
+.ib-text a{color:var(--accent);text-decoration:none;font-weight:600;border-bottom:1px solid transparent;transition:border-color .15s}
+.ib-text a:hover{border-color:var(--accent)}
+
 /* Brand filters */
 .bf-wrap{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 0 16px;margin-bottom:6px;border-bottom:1px solid var(--border)}
 .bf-label{font-size:11px;font-weight:600;color:var(--text-subtle);text-transform:uppercase;letter-spacing:.06em;margin-right:4px}
@@ -310,6 +319,15 @@ body.edit .td-img::after{content:'✎';position:absolute;top:4px;right:3px;backg
     <div id="cnav"></div>
   </aside>
   <div class="content">
+    <div class="info-banner" id="info-banner">
+      <div class="ib-icon">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+      </div>
+      <div class="ib-text">
+        <strong id="ib-title">Nos produits les plus populaires</strong>
+        <span id="ib-sub">Plus de <strong>2 000 produits supplémentaires</strong> disponibles sur demande — <a href="https://neobex.ca/pages/contact" target="_blank">contactez-nous</a> pour le catalogue complet.</span>
+      </div>
+    </div>
     <div class="ri" id="ri"></div>
     <div id="brand-filters" class="bf-wrap" style="display:none"></div>
     <div id="body"></div>
@@ -892,6 +910,13 @@ function setLang(l){
   document.getElementById('htit').textContent = l==='fr'?'Catalogue 2026':'Catalogue 2026';
   document.getElementById('stit').textContent = l==='fr'?'Catégories':'Categories';
   document.getElementById('search').placeholder = l==='fr'?'Rechercher produit, SKU...':'Search product, SKU...';
+  // Info banner translation
+  var ibT = document.getElementById('ib-title');
+  var ibS = document.getElementById('ib-sub');
+  if(ibT) ibT.textContent = l==='fr' ? 'Nos produits les plus populaires' : 'Our most popular products';
+  if(ibS) ibS.innerHTML = l==='fr'
+    ? 'Plus de <strong>2 000 produits supplémentaires</strong> disponibles sur demande — <a href="https://neobex.ca/pages/contact" target="_blank">contactez-nous</a> pour le catalogue complet.'
+    : 'Over <strong>2,000 additional products</strong> available on request — <a href="https://neobex.ca/pages/contact" target="_blank">contact us</a> for the full catalogue.';
   savePersonal(); nav(); render();
 }
 
