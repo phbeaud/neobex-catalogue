@@ -205,14 +205,18 @@ body.edit .td-img::after{content:'✎';position:absolute;top:4px;right:3px;backg
 .ib-text a{color:var(--accent);text-decoration:none;font-weight:600;border-bottom:1px solid transparent;transition:border-color .15s}
 .ib-text a:hover{border-color:var(--accent)}
 
-/* Compatibility badges */
-.compat-badge{display:inline-flex;align-items:center;gap:5px;margin-top:4px;padding:3px 8px;background:var(--accent-soft);color:var(--accent);font-size:10.5px;font-weight:500;line-height:1.3;border-radius:5px;border:1px solid #DBEAFE;max-width:100%;cursor:help}
-.compat-badge.compat-disp{background:#F0FDF4;color:#166534;border-color:#BBF7D0}
-.cb-icon{font-weight:700;font-size:11px;flex-shrink:0}
-.cb-label{color:var(--text-subtle);font-weight:400;margin-right:2px}
+/* Compatibility badges — design clair: nom + SKU explicite */
+.compat-badge{display:flex;align-items:flex-start;gap:8px;margin-top:6px;padding:6px 10px;background:var(--accent-soft);font-size:11px;line-height:1.4;border-radius:6px;border:1px solid #DBEAFE;max-width:520px;cursor:help}
+.compat-badge.compat-disp{background:#F0FDF4;border-color:#BBF7D0}
+.cb-icon{font-weight:700;font-size:13px;flex-shrink:0;color:var(--accent);margin-top:1px}
+.compat-badge.compat-disp .cb-icon{color:#166534}
+.cb-content{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+.cb-label{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--accent)}
 .compat-badge.compat-disp .cb-label{color:#166534}
-.cb-more{background:rgba(37,99,235,.15);padding:1px 5px;border-radius:9px;font-size:9.5px;font-weight:600;margin-left:3px}
-.compat-badge.compat-disp .cb-more{background:rgba(22,101,52,.15)}
+.cb-item{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.cb-name{font-size:11.5px;color:var(--text);font-weight:500;line-height:1.3}
+.cb-sku-tag{font-family:'JetBrains Mono',monospace;font-size:10px;background:rgba(37,99,235,.15);color:var(--accent);padding:1px 6px;border-radius:4px;font-weight:600;white-space:nowrap}
+.compat-badge.compat-disp .cb-sku-tag{background:rgba(22,101,52,.15);color:#166534}
 
 /* Brand filters */
 .bf-wrap{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 0 16px;margin-bottom:6px;border-bottom:1px solid var(--border)}
@@ -1506,20 +1510,35 @@ function getCompatProducts(p){
 function compatBadgeHTML(p){
   var c = getCompatProducts(p);
   if(c.dispensers.length){
-    // This is a paper — show which dispensers it fits
-    var labels = c.dispensers.map(function(d){
+    // This is a PAPER — show which dispensers it fits, with the dispenser SKU clearly labeled
+    var items = c.dispensers.map(function(d){
       var nm = (lg==='fr' ? d.name_fr : d.name_en) || '';
-      // Shorten to first ~40 chars
-      return nm.length > 40 ? nm.substring(0,40)+'…' : nm;
+      var shortNm = nm.length > 50 ? nm.substring(0,50)+'…' : nm;
+      var dispSku = d.skus[0] || '';
+      var moreSkus = d.skus.length > 1 ? ' +'+(d.skus.length-1) : '';
+      return '<div class="cb-item"><span class="cb-name">'+shortNm+'</span><span class="cb-sku-tag">'+dispSku+moreSkus+'</span></div>';
     });
-    var label = lg==='fr' ? 'Compatible avec :' : 'Compatible with:';
-    return '<div class="compat-badge compat-paper" title="'+labels.join(' • ')+'"><span class="cb-icon">↪</span> <span class="cb-label">'+label+'</span> '+labels[0]+(labels.length>1?' <span class="cb-more">+'+(labels.length-1)+'</span>':'')+'</div>';
+    var label = lg==='fr' ? 'Pour distributeur :' : 'For dispenser:';
+    var fullTitle = c.dispensers.map(function(d){
+      return (lg==='fr'?d.name_fr:d.name_en)+' — SKU: '+d.skus.join(', ');
+    }).join('\n');
+    return '<div class="compat-badge compat-paper" title="'+fullTitle.replace(/"/g,'&quot;')+'"><span class="cb-icon">↪</span><div class="cb-content"><span class="cb-label">'+label+'</span>'+items.join('')+'</div></div>';
   }
   if(c.papers.length){
-    // This is a dispenser — show how many papers fit
-    var label = lg==='fr' ? (c.papers.length===1?'1 papier compatible':c.papers.length+' papiers compatibles') : (c.papers.length===1?'1 compatible paper':c.papers.length+' compatible papers');
-    var titles = c.papers.map(function(p){ return (lg==='fr'?p.name_fr:p.name_en)+' ('+p.skus[0]+')'; }).join(' • ');
-    return '<div class="compat-badge compat-disp" title="'+titles+'"><span class="cb-icon">⇄</span> '+label+'</div>';
+    // This is a DISPENSER — show compatible papers with their SKUs
+    var items = c.papers.map(function(pp){
+      var nm = (lg==='fr' ? pp.name_fr : pp.name_en) || '';
+      var shortNm = nm.length > 50 ? nm.substring(0,50)+'…' : nm;
+      var paperSku = pp.skus[0] || '';
+      return '<div class="cb-item"><span class="cb-name">'+shortNm+'</span><span class="cb-sku-tag">'+paperSku+'</span></div>';
+    });
+    var label = lg==='fr'
+      ? (c.papers.length===1?'Papier compatible :':c.papers.length+' papiers compatibles :')
+      : (c.papers.length===1?'Compatible paper:':c.papers.length+' compatible papers:');
+    var fullTitle = c.papers.map(function(pp){
+      return (lg==='fr'?pp.name_fr:pp.name_en)+' — SKU: '+pp.skus[0];
+    }).join('\n');
+    return '<div class="compat-badge compat-disp" title="'+fullTitle.replace(/"/g,'&quot;')+'"><span class="cb-icon">⇄</span><div class="cb-content"><span class="cb-label">'+label+'</span>'+items.join('')+'</div></div>';
   }
   return '';
 }
