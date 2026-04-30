@@ -430,19 +430,24 @@ body.edit .td-img::after{content:'✎';position:absolute;top:4px;right:3px;backg
     </div>
     <div class="frow">
       <label>Catégorie</label>
-      <select id="edit-cat"><option value="HAND PROTECTION">HAND PROTECTION</option>
-<option value="HEAD & FACE PROTECTION">HEAD & FACE PROTECTION</option>
-<option value="EAR PLUGS & INDUSTRIAL">EAR PLUGS & INDUSTRIAL</option>
-<option value="MASKS">MASKS</option>
-<option value="BODY PROTECTION">BODY PROTECTION</option>
-<option value="SLEEVES">SLEEVES</option>
-<option value="DISPENSERS FOR PPES">DISPENSERS FOR PPES</option>
-<option value="SHOE COVERS & FOOTWEAR">SHOE COVERS & FOOTWEAR</option>
-<option value="SAFETY CLOTHING">SAFETY CLOTHING</option>
-<option value="SCOURING PADS, TOWELS, WIPES & MAT">SCOURING PADS, TOWELS, WIPES & MAT</option>
-<option value="FOODSERVICE PRODUCTS">FOODSERVICE PRODUCTS</option>
-<option value="GARBAGE BAGS">GARBAGE BAGS</option>
-<option value="PAPER PRODUCTS">PAPER PRODUCTS</option></select>
+      <select id="edit-cat">
+<option value="HAND PROTECTION">Protection des mains</option>
+<option value="HEAD & FACE PROTECTION">Protection tête et visage</option>
+<option value="EAR PLUGS & INDUSTRIAL">Bouchons et équipement industriel</option>
+<option value="MASKS">Masques</option>
+<option value="BODY PROTECTION">Protection corporelle</option>
+<option value="SLEEVES">Manchons</option>
+<option value="Dispenser">Distributeur</option>
+<option value="SHOE COVERS & FOOTWEAR">Couvre-chaussures</option>
+<option value="SAFETY CLOTHING">Vêtements de sécurité</option>
+<option value="SCOURING PADS, TOWELS, WIPES & MAT">Tampons, serviettes et chiffons</option>
+<option value="FOODSERVICE PRODUCTS">Produits emballages</option>
+<option value="GARBAGE BAGS">Sacs de poubelle</option>
+<option value="PAPER PRODUCTS">Produits papier</option>
+<option value="Cleaning Products">Produits nettoyants</option>
+<option value="Incontinence">Incontinence</option>
+<option value="Others (to classify)">Autres (à classifier)</option>
+</select>
     </div>
     <div class="frow">
       <label>Quantité / Conditionnement</label>
@@ -714,15 +719,19 @@ var CM={
   'MASKS':{fr:'Masques',en:'Masks'},
   'BODY PROTECTION':{fr:'Protection corporelle',en:'Body Protection'},
   'SLEEVES':{fr:'Manchons',en:'Sleeves'},
-  'DISPENSERS FOR PPES':{fr:'Distributeurs EPI',en:'Dispensers for PPEs'},
+  'Dispenser':{fr:'Distributeur',en:'Dispenser'},
   'SHOE COVERS & FOOTWEAR':{fr:'Couvre-chaussures',en:'Shoe Covers & Footwear'},
   'SAFETY CLOTHING':{fr:'Vêtements de sécurité',en:'Safety Clothing'},
-  
+
   'SCOURING PADS, TOWELS, WIPES & MAT':{fr:'Tampons, serviettes et chiffons',en:'Scouring Pads, Towels & Wipes'},
   'FOODSERVICE PRODUCTS':{fr:'Produits emballages',en:'Packaging Products'},
   'GARBAGE BAGS':{fr:'Sacs de poubelle',en:'Garbage Bags'},
-  
-  'PAPER PRODUCTS':{fr:'Produits papier',en:'Paper Products'}
+
+  'PAPER PRODUCTS':{fr:'Produits papier',en:'Paper Products'},
+
+  'Cleaning Products':{fr:'Produits nettoyants',en:'Cleaning Products'},
+  'Incontinence':{fr:'Incontinence',en:'Incontinence'},
+  'Others (to classify)':{fr:'Autres (à classifier)',en:'Others (to classify)'}
 };
 
 var IC={
@@ -1491,15 +1500,16 @@ function buildClientHtml(pdata){
     'MASKS':{fr:'Masques',en:'Masks'},
     'BODY PROTECTION':{fr:'Protection corporelle',en:'Body Protection'},
     'SLEEVES':{fr:'Manchons',en:'Sleeves'},
-    'DISPENSERS FOR PPES':{fr:'Distributeurs EPI',en:'Dispensers for PPEs'},
+    'Dispenser':{fr:'Distributeur',en:'Dispenser'},
     'SHOE COVERS & FOOTWEAR':{fr:'Couvre-chaussures',en:'Shoe Covers & Footwear'},
     'SAFETY CLOTHING':{fr:'Vêtements de sécurité',en:'Safety Clothing'},
-    
     'SCOURING PADS, TOWELS, WIPES & MAT':{fr:'Tampons, serviettes et chiffons',en:'Scouring Pads, Towels & Wipes'},
     'FOODSERVICE PRODUCTS':{fr:'Produits emballages',en:'Packaging Products'},
     'GARBAGE BAGS':{fr:'Sacs de poubelle',en:'Garbage Bags'},
-    
-    'PAPER PRODUCTS':{fr:'Produits papier',en:'Paper Products'}
+    'PAPER PRODUCTS':{fr:'Produits papier',en:'Paper Products'},
+    'Cleaning Products':{fr:'Produits nettoyants',en:'Cleaning Products'},
+    'Incontinence':{fr:'Incontinence',en:'Incontinence'},
+    'Others (to classify)':{fr:'Autres (à classifier)',en:'Others (to classify)'}
   };
   var IC2={
     'HAND PROTECTION':'<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 11V6a2 2 0 0 0-4 0M14 10V4a2 2 0 0 0-4 0v2M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-16 0 2 2 0 1 1 4 0"/></svg>',
