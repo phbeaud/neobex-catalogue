@@ -1,0 +1,161 @@
+{
+  "INS-TS-500TT": [
+    "DISP-PH-STD"
+  ],
+  "INS-TS-420TT": [
+    "DISP-PH-STD"
+  ],
+  "INS-TS-1000TT": [
+    "DISP-PH-STD"
+  ],
+  "CAS-B042": [
+    "DISP-PH-STD"
+  ],
+  "CAS-B211": [
+    "DISP-PH-STD"
+  ],
+  "SNS-7500": [
+    "DISP-PH-STD"
+  ],
+  "SNS-48500": [
+    "DISP-PH-STD"
+  ],
+  "SNS-48420": [
+    "DISP-PH-STD"
+  ],
+  "CSD600JRT": [
+    "DISP-PH-JRT"
+  ],
+  "CSD1000JRT": [
+    "DISP-PH-JRT"
+  ],
+  "CAS-B140": [
+    "DISP-PH-JRT"
+  ],
+  "CAS-B231": [
+    "DISP-PH-JRT"
+  ],
+  "CAS-B120": [
+    "DISP-PH-JRT"
+  ],
+  "SNS-JRT700": [
+    "DISP-PH-JRT"
+  ],
+  "INS-TS-1000JRT": [
+    "DISP-PH-JRT-JR"
+  ],
+  "INS-TS-1000JRT-12": [
+    "DISP-PH-JRT-JR"
+  ],
+  "INS-TS-208JRT": [
+    "DISP-PH-JRT-JR"
+  ],
+  "INS-TS-212JRT": [
+    "DISP-PH-JRT-JR"
+  ],
+  "INS-TS-210JRT": [
+    "DISP-PH-JRT-JR"
+  ],
+  "SCA-161990": [
+    "SCA-565728"
+  ],
+  "SCA-472880": [
+    "SCA-473208"
+  ],
+  "CAS-T260A1": [
+    "C310"
+  ],
+  "CAS-T320": [
+    "C310"
+  ],
+  "CAS-T150": [
+    "C310"
+  ],
+  "CSD800W": [
+    "DISP-HT-UNIV"
+  ],
+  "CSD600W": [
+    "DISP-HT-UNIV"
+  ],
+  "CSD350B": [
+    "DISP-HT-UNIV"
+  ],
+  "CAS-H045": [
+    "DISP-HT-UNIV"
+  ],
+  "INS-TS-350KRT": [
+    "DISP-HT-UNIV"
+  ],
+  "HWT350K": [
+    "DISP-HT-UNIV"
+  ],
+  "SNS-HWT600K": [
+    "DISP-HT-UNIV"
+  ],
+  "INS-TS-600KRT": [
+    "DISP-HT-UNIV"
+  ],
+  "SNS-TD700": [
+    "DISP-HT-UNIV"
+  ],
+  "SNS-HWT800W": [
+    "DISP-HT-UNIV"
+  ],
+  "SNS-HWT800K": [
+    "DISP-HT-UNIV"
+  ],
+  "SNS-HWT600W": [
+    "DISP-HT-UNIV"
+  ],
+  "INS-TS-800WRT": [
+    "DISP-HT-UNIV"
+  ],
+  "CAS-H030": [
+    "DISP-HT-UNIV"
+  ],
+  "SCA-290088": [
+    "SCA-5510202"
+  ],
+  "SCA-290095": [
+    "SCA-5510202"
+  ],
+  "SCA-290096": [
+    "SCA-5510202"
+  ],
+  "SCA-105065": [
+    "SCA-552520"
+  ],
+  "SCA-7171300": [
+    "SCA-771728"
+  ],
+  "KMC-02000": [
+    "KMC-09996"
+  ],
+  "KMC-02001": [
+    "KMC-09996"
+  ],
+  "CAS-T220": [
+    "C175"
+  ],
+  "CAS-T116": [
+    "C175"
+  ],
+  "CAS-T115": [
+    "C175"
+  ],
+  "CAS-T225": [
+    "C175"
+  ],
+  "CAS-T330": [
+    "C339"
+  ],
+  "SNS-MF4000K-C": [
+    "DISP-HT-MULTIFOLD"
+  ],
+  "SNS-SF4000W": [
+    "DISP-HT-SINGLEFOLD"
+  ],
+  "INS-TS-4000KSF": [
+    "DISP-HT-SINGLEFOLD"
+  ]
+}
