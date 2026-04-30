@@ -325,7 +325,7 @@ body.edit .td-img::after{content:'✎';position:absolute;top:4px;right:3px;backg
       </div>
       <div class="ib-text">
         <strong id="ib-title">Nos produits les plus populaires</strong>
-        <span id="ib-sub">Plus de <strong>2 000 produits supplémentaires</strong> disponibles sur demande — <a href="https://neobex.ca/pages/contact" target="_blank">contactez-nous</a> pour le catalogue complet.</span>
+        <span id="ib-sub">Plus de <strong>2 000 produits supplémentaires</strong> disponibles sur demande — <a href="https://neobex.ca/pages/contact" target="_blank">contactez-nous</a> pour une soumission complète.</span>
       </div>
     </div>
     <div class="ri" id="ri"></div>
@@ -915,8 +915,8 @@ function setLang(l){
   var ibS = document.getElementById('ib-sub');
   if(ibT) ibT.textContent = l==='fr' ? 'Nos produits les plus populaires' : 'Our most popular products';
   if(ibS) ibS.innerHTML = l==='fr'
-    ? 'Plus de <strong>2 000 produits supplémentaires</strong> disponibles sur demande — <a href="https://neobex.ca/pages/contact" target="_blank">contactez-nous</a> pour le catalogue complet.'
-    : 'Over <strong>2,000 additional products</strong> available on request — <a href="https://neobex.ca/pages/contact" target="_blank">contact us</a> for the full catalogue.';
+    ? 'Plus de <strong>2 000 produits supplémentaires</strong> disponibles sur demande — <a href="https://neobex.ca/pages/contact" target="_blank">contactez-nous</a> pour une soumission complète.'
+    : 'Over <strong>2,000 additional products</strong> available on request — <a href="https://neobex.ca/pages/contact" target="_blank">contact us</a> for a complete quote.';
   savePersonal(); nav(); render();
 }
 
