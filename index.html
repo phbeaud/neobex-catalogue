@@ -50,8 +50,17 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);font-
 .cbt .cnt{float:right;font-size:10px;opacity:.6;background:rgba(0,0,0,.06);padding:1px 5px;border-radius:10px;font-family:'JetBrains Mono',monospace}
 .cbt.act .cnt{opacity:1;background:rgba(37,99,235,.12);color:var(--accent)}
 .content{flex:1;min-width:0}
-.ri{font-size:12px;color:var(--g500);margin-bottom:12px;font-weight:500}
+.ri{font-size:12px;color:var(--g500);margin-bottom:12px;font-weight:500;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .ri strong{color:var(--blue)}
+.select-all-btn{margin-left:auto;display:inline-flex;align-items:center;gap:8px;padding:6px 12px;background:#fff;border:1.5px solid var(--g200);border-radius:8px;font-family:inherit;font-size:12px;font-weight:600;color:var(--g700);cursor:pointer;transition:all .15s}
+.select-all-btn:hover{border-color:var(--accent);color:var(--accent);background:#F0F7FF}
+.select-all-btn .sa-box{width:16px;height:16px;border:1.5px solid var(--g300);border-radius:4px;display:flex;align-items:center;justify-content:center;background:#fff;transition:all .15s;color:transparent}
+.select-all-btn.on{border-color:var(--accent);background:#EFF6FF;color:var(--accent)}
+.select-all-btn.on .sa-box{background:var(--accent);border-color:var(--accent);color:#fff}
+.select-all-btn.partial .sa-box{background:#fff;border-color:var(--accent);position:relative}
+.select-all-btn.partial .sa-box::after{content:"";position:absolute;width:8px;height:2px;background:var(--accent);border-radius:1px}
+.select-all-btn.partial .sa-box svg{display:none}
+@media print{.select-all-btn{display:none!important}}
 .sec{margin-bottom:24px}
 .ch{display:flex;align-items:center;gap:9px;margin-bottom:10px;padding-bottom:7px;border-bottom:1px solid var(--border)}
 .ci{width:26px;height:26px;background:var(--accent-soft);border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -303,7 +312,7 @@ body.edit .td-img::after{content:'✎';position:absolute;top:4px;right:3px;backg
       <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
       <span id="elab">Édition</span>
     </button>
-    <button class="btn btn-pdf" onclick="window.print()">
+    <button class="btn btn-pdf" onclick="generateDesignedPDF()" id="btn-pdf">
       <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
       PDF
     </button>
@@ -1322,7 +1331,11 @@ function renderGridView(or_, gr){
 function render(){
   renderBrandFilters();
   var r = fp();
-  document.getElementById('ri').innerHTML = '<strong>'+r.length+'</strong> / '+P.length+' '+(lg==='fr'?'produits':'products');
+  var selAll = '<button id="select-all-cb" class="select-all-btn" data-state="none" onclick="Cart.toggleAllVisible()" title="Cocher tous les produits visibles">'
+    + '<span class="sa-box"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>'
+    + '<span id="select-all-lbl">'+(lg==='fr'?'Tout sélectionner':'Select all')+'</span>'
+    + '</button>';
+  document.getElementById('ri').innerHTML = '<strong>'+r.length+'</strong> / '+P.length+' '+(lg==='fr'?'produits':'products') + ' ' + selAll;
   if(!r.length){
     document.getElementById('body').innerHTML = '<div class="empty"><p>'+(lg==='fr'?'Aucun résultat':'No results')+'</p></div>';
     return;
@@ -1334,6 +1347,7 @@ function render(){
   });
   var view = (typeof currentView !== 'undefined' ? currentView : 'list');
   document.getElementById('body').innerHTML = view === 'grid' ? renderGridView(or_, gr) : renderListView(or_, gr);
+  if (typeof Cart !== 'undefined' && Cart.updateSelectAllUI) Cart.updateSelectAllUI();
 }
 
 // === VIEW TOGGLE ===
@@ -1385,6 +1399,37 @@ var Cart = {
     else { this.items[id] = {qty:1,notes:''}; }
     this.save(); this.refreshFab(); this._syncRowState(id, btn);
     if(document.getElementById('cart-drawer').classList.contains('on')) this.renderDrawer();
+  },
+  toggleAllVisible: function(){
+    var visible = (typeof fp === 'function') ? fp() : [];
+    if(!visible.length) return;
+    var self = this;
+    // If all visible products are already selected → deselect them; else select all
+    var allOn = visible.every(function(p){ return !!self.items[p.id]; });
+    if(allOn){
+      visible.forEach(function(p){ delete self.items[p.id]; self._syncRowState(p.id); });
+    } else {
+      visible.forEach(function(p){ if(!self.items[p.id]){ self.items[p.id] = {qty:1,notes:''}; self._syncRowState(p.id); } });
+    }
+    this.save();
+    this.refreshFab();
+    this.updateSelectAllUI();
+    if(document.getElementById('cart-drawer').classList.contains('on')) this.renderDrawer();
+  },
+  updateSelectAllUI: function(){
+    var el = document.getElementById('select-all-cb');
+    if(!el) return;
+    var visible = (typeof fp === 'function') ? fp() : [];
+    var total = visible.length;
+    var selected = visible.filter(function(p){ return !!Cart.items[p.id]; }).length;
+    el.dataset.state = (selected === 0) ? 'none' : (selected === total ? 'all' : 'some');
+    el.classList.toggle('on', selected === total && total > 0);
+    el.classList.toggle('partial', selected > 0 && selected < total);
+    var lbl = document.getElementById('select-all-lbl');
+    if(lbl){
+      if(lg==='fr') lbl.textContent = selected === total && total > 0 ? 'Tout désélectionner' : 'Tout sélectionner';
+      else lbl.textContent = selected === total && total > 0 ? 'Deselect all' : 'Select all';
+    }
   },
   _syncRowState: function(id, btn){
     var on = !!this.items[id];
@@ -1607,6 +1652,311 @@ function compatBadgeHTML(p){
     return '<div class="compat-badge compat-disp" title="'+fullTitle.replace(/"/g,'&quot;')+'"><span class="cb-icon">⇄</span><div class="cb-content"><span class="cb-label">'+label+'</span>'+items.join('')+'</div></div>';
   }
   return '';
+}
+
+// === DESIGNED PDF GENERATOR ===
+// Lazy-loads jsPDF + autoTable from CDN, then builds a beautifully designed
+// multi-page PDF with one cover page per category, then product tables.
+
+var _pdfLibsLoaded = false;
+function loadPdfLibs() {
+  if (_pdfLibsLoaded) return Promise.resolve();
+  return new Promise(function(resolve, reject){
+    var loaded = 0;
+    function done(){ loaded++; if(loaded===2){ _pdfLibsLoaded = true; resolve(); } }
+    var s1 = document.createElement('script');
+    s1.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    s1.onload = done; s1.onerror = function(){ reject(new Error('jsPDF load failed')); };
+    document.head.appendChild(s1);
+    var s2 = document.createElement('script');
+    s2.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.0/jspdf.plugin.autotable.min.js';
+    s2.onload = done; s2.onerror = function(){ reject(new Error('autoTable load failed')); };
+    document.head.appendChild(s2);
+  });
+}
+
+// Convert an image URL to a base64 dataURL via canvas (for embedding in PDF)
+function imgUrlToDataURL(url) {
+  return new Promise(function(resolve){
+    if (!url) { resolve(null); return; }
+    var img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = function(){
+      try {
+        var canvas = document.createElement('canvas');
+        var maxDim = 200;
+        var scale = Math.min(maxDim / img.width, maxDim / img.height, 1);
+        canvas.width = Math.max(1, Math.round(img.width * scale));
+        canvas.height = Math.max(1, Math.round(img.height * scale));
+        var ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', 0.85));
+      } catch(e){ resolve(null); }
+    };
+    img.onerror = function(){ resolve(null); };
+    img.src = url;
+  });
+}
+
+// Convert an SVG string into a PNG dataURL
+function svgToDataURL(svgStr, size) {
+  return new Promise(function(resolve){
+    var s = size || 256;
+    // Force size in SVG
+    var sized = svgStr.replace(/width="\d+"/, 'width="'+s+'"').replace(/height="\d+"/, 'height="'+s+'"');
+    var blob = new Blob([sized], {type:'image/svg+xml;charset=utf-8'});
+    var url = URL.createObjectURL(blob);
+    var img = new Image();
+    img.onload = function(){
+      var canvas = document.createElement('canvas');
+      canvas.width = s; canvas.height = s;
+      var ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, s, s);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = function(){ URL.revokeObjectURL(url); resolve(null); };
+    img.src = url;
+  });
+}
+
+// Wrap an SVG icon (the body part) into a full standalone SVG with color
+function buildCategoryIconSVG(svgFragment, color) {
+  // svgFragment from IC is already a full <svg> string with stroke="currentColor"
+  // Replace currentColor with the provided color
+  var out = svgFragment.replace(/currentColor/g, color || '#FFFFFF');
+  return out;
+}
+
+async function generateDesignedPDF() {
+  var btn = document.getElementById('btn-pdf');
+  var originalText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span style="font-size:11px">Génération…</span>';
+
+  try {
+    await loadPdfLibs();
+    var jsPDF = window.jspdf.jsPDF;
+    var doc = new jsPDF({orientation:'portrait', unit:'mm', format:'a4'});
+
+    var BLUE = [27, 79, 138];        // #1B4F8A
+    var GREEN = [107, 172, 63];      // #6BAC3F
+    var BPALE = [232, 240, 251];     // #E8F0FB
+    var DARK = [15, 23, 42];         // #0F172A
+    var GRAY = [100, 116, 139];      // #64748B
+    var LIGHT = [241, 245, 249];     // #F1F5F9
+
+    var pageW = doc.internal.pageSize.getWidth();
+    var pageH = doc.internal.pageSize.getHeight();
+
+    // === GROUP PRODUCTS BY CATEGORY ===
+    var products = P.slice().sort(function(a,b){ return (a.sort_order||0) - (b.sort_order||0); });
+    var cats = [];
+    var byCat = {};
+    products.forEach(function(p){
+      if (!byCat[p.cat_en]) { byCat[p.cat_en] = []; cats.push(p.cat_en); }
+      byCat[p.cat_en].push(p);
+    });
+
+    // === MAIN TITLE PAGE ===
+    doc.setFillColor.apply(doc, BLUE);
+    doc.rect(0, 0, pageW, pageH, 'F');
+    // Decorative green half-circle
+    doc.setFillColor.apply(doc, GREEN);
+    doc.circle(pageW + 20, pageH - 30, 80, 'F');
+    doc.setFillColor(255,255,255);
+    doc.circle(-20, 30, 60, 'F');
+
+    // Center white card
+    doc.setFillColor(255,255,255);
+    doc.roundedRect(20, 60, pageW - 40, 130, 5, 5, 'F');
+    doc.setTextColor.apply(doc, BLUE);
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(48);
+    doc.text('NEOBEX', pageW/2, 100, {align:'center'});
+    doc.setFontSize(14);
+    doc.setTextColor.apply(doc, GRAY);
+    doc.setFont('helvetica','normal');
+    doc.text('CATALOGUE 2026', pageW/2, 115, {align:'center'});
+    doc.setDrawColor.apply(doc, GREEN);
+    doc.setLineWidth(0.8);
+    doc.line(pageW/2 - 25, 125, pageW/2 + 25, 125);
+    doc.setTextColor.apply(doc, DARK);
+    doc.setFontSize(11);
+    doc.text((lg==='fr'?'Produits industriels':'Industrial Products'), pageW/2, 145, {align:'center'});
+    doc.setFontSize(10);
+    doc.setTextColor.apply(doc, GRAY);
+    doc.text(products.length + (lg==='fr'?' produits • ':' products • ') + cats.length + (lg==='fr'?' catégories':' categories'), pageW/2, 158, {align:'center'});
+    doc.setFontSize(9);
+    doc.text('catalogue.neobex.ca', pageW/2, 175, {align:'center'});
+
+    // Footer date
+    doc.setTextColor(255,255,255);
+    doc.setFontSize(8);
+    var d = new Date();
+    var months = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+    var dateStr = d.getDate()+' '+months[d.getMonth()]+' '+d.getFullYear();
+    doc.text((lg==='fr'?'Édition du ':'Edition: ') + dateStr, pageW/2, pageH - 15, {align:'center'});
+
+    // === FOR EACH CATEGORY ===
+    for (var ci = 0; ci < cats.length; ci++) {
+      var cat = cats[ci];
+      var catLabel = (CM[cat] && CM[cat][lg]) || cat;
+      var catProducts = byCat[cat];
+
+      // --- COVER PAGE for category ---
+      doc.addPage();
+      // Background
+      doc.setFillColor.apply(doc, LIGHT);
+      doc.rect(0, 0, pageW, pageH, 'F');
+      // Top stripe
+      doc.setFillColor.apply(doc, BLUE);
+      doc.rect(0, 0, pageW, 35, 'F');
+      doc.setTextColor(255,255,255);
+      doc.setFontSize(10);
+      doc.setFont('helvetica','bold');
+      doc.text('NEOBEX', 15, 22);
+      doc.setFont('helvetica','normal');
+      doc.setFontSize(9);
+      doc.text(lg==='fr'?'Catalogue 2026':'Catalogue 2026', pageW - 15, 22, {align:'right'});
+
+      // Section number
+      doc.setTextColor.apply(doc, GRAY);
+      doc.setFontSize(11);
+      doc.text((lg==='fr'?'SECTION ':'SECTION ') + String(ci+1).padStart(2,'0'), pageW/2, 70, {align:'center'});
+
+      // Big colored circle with icon
+      var cx = pageW/2;
+      var cy = pageH/2 - 10;
+      var radius = 28;
+      doc.setFillColor.apply(doc, BLUE);
+      doc.circle(cx, cy, radius, 'F');
+      doc.setFillColor.apply(doc, GREEN);
+      doc.circle(cx + radius - 6, cy - radius + 6, 6, 'F');
+
+      // Embed category icon as PNG
+      try {
+        var iconSvg = (typeof IC !== 'undefined' && IC[cat]) ? IC[cat] : (IC && IC['d']) || '';
+        if (iconSvg) {
+          var iconColored = buildCategoryIconSVG(iconSvg, '#FFFFFF');
+          var iconData = await svgToDataURL(iconColored, 256);
+          if (iconData) {
+            var iconSize = 30;
+            doc.addImage(iconData, 'PNG', cx - iconSize/2, cy - iconSize/2, iconSize, iconSize);
+          }
+        }
+      } catch(e) { console.warn('Icon render:', e); }
+
+      // Category name
+      doc.setTextColor.apply(doc, DARK);
+      doc.setFont('helvetica','bold');
+      doc.setFontSize(28);
+      // Wrap category name if too long
+      var nameLines = doc.splitTextToSize(catLabel, pageW - 30);
+      doc.text(nameLines, pageW/2, cy + radius + 18, {align:'center'});
+
+      // Divider
+      var yAfterName = cy + radius + 18 + (nameLines.length * 10);
+      doc.setDrawColor.apply(doc, GREEN);
+      doc.setLineWidth(1);
+      doc.line(pageW/2 - 20, yAfterName + 5, pageW/2 + 20, yAfterName + 5);
+
+      // Product count
+      doc.setTextColor.apply(doc, GRAY);
+      doc.setFont('helvetica','normal');
+      doc.setFontSize(13);
+      doc.text(catProducts.length + (lg==='fr'?(catProducts.length>1?' produits':' produit'):(catProducts.length>1?' products':' product')), pageW/2, yAfterName + 18, {align:'center'});
+
+      // Footer
+      doc.setTextColor.apply(doc, GRAY);
+      doc.setFontSize(8);
+      doc.text(catLabel + ' • ' + (ci+1) + '/' + cats.length, pageW/2, pageH - 10, {align:'center'});
+
+      // --- PRODUCT TABLE PAGES ---
+      doc.addPage();
+      // Pre-load images for this category (small ones)
+      var rowImagesByIdx = {};
+      var imgPromises = catProducts.map(function(p, idx){
+        return imgUrlToDataURL(p.img).then(function(data){ rowImagesByIdx[idx] = data; });
+      });
+      await Promise.all(imgPromises);
+
+      var rows = catProducts.map(function(p){
+        var name = (lg==='fr' ? p.name_fr : p.name_en) || '';
+        var sku = (p.skus && p.skus[0]) ? p.skus[0] : '';
+        if (p.skus && p.skus.length > 1) sku += ' +' + (p.skus.length - 1);
+        return [ '', name, p.qty || '', sku ];
+      });
+
+      doc.autoTable({
+        startY: 35,
+        head: [[
+          lg==='fr'?'Image':'Image',
+          lg==='fr'?'Produit':'Product',
+          lg==='fr'?'Unité d\'usage':'Pack size',
+          'SKU'
+        ]],
+        body: rows,
+        theme: 'grid',
+        styles: { font:'helvetica', fontSize:9, cellPadding:3, valign:'middle', lineColor:[226,232,240], lineWidth:0.1 },
+        headStyles: { fillColor: BLUE, textColor: [255,255,255], fontStyle:'bold', halign:'left', fontSize:9 },
+        alternateRowStyles: { fillColor: [250,251,253] },
+        columnStyles: {
+          0: { cellWidth: 22, minCellHeight: 22, halign:'center' },
+          1: { cellWidth: 'auto' },
+          2: { cellWidth: 35 },
+          3: { cellWidth: 30, font:'courier', fontSize:8 }
+        },
+        margin: { left: 12, right: 12, top: 32, bottom: 18 },
+        didDrawCell: function(data) {
+          if (data.section === 'body' && data.column.index === 0 && data.cell.raw === '') {
+            var idx = data.row.index;
+            var imgData = rowImagesByIdx[idx];
+            if (imgData) {
+              var pad = 1.5;
+              var size = Math.min(data.cell.width - pad*2, data.cell.height - pad*2, 18);
+              var x = data.cell.x + (data.cell.width - size) / 2;
+              var y = data.cell.y + (data.cell.height - size) / 2;
+              try { doc.addImage(imgData, 'JPEG', x, y, size, size); } catch(e){}
+            }
+          }
+        },
+        didDrawPage: function(data) {
+          // Header band on each table page
+          doc.setFillColor.apply(doc, BLUE);
+          doc.rect(0, 0, pageW, 22, 'F');
+          doc.setTextColor(255,255,255);
+          doc.setFont('helvetica','bold');
+          doc.setFontSize(10);
+          doc.text('NEOBEX', 12, 13);
+          doc.setFont('helvetica','normal');
+          doc.setFontSize(9);
+          doc.text(catLabel, pageW/2, 13, {align:'center'});
+          doc.setFontSize(8);
+          doc.text((lg==='fr'?'Catalogue 2026':'Catalogue 2026'), pageW - 12, 13, {align:'right'});
+
+          // Footer page number
+          doc.setTextColor.apply(doc, GRAY);
+          doc.setFontSize(8);
+          doc.text('catalogue.neobex.ca', 12, pageH - 8);
+          doc.text(catLabel + ' • ' + doc.internal.getNumberOfPages(), pageW - 12, pageH - 8, {align:'right'});
+        }
+      });
+    }
+
+    // === SAVE ===
+    var filename = 'Neobex_Catalogue_2026_' + dateStr.replace(/\s/g,'-') + '.pdf';
+    doc.save(filename);
+
+  } catch (err) {
+    console.error(err);
+    alert('Erreur lors de la génération du PDF : ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalText;
+  }
 }
 
 // === INIT ===
