@@ -1994,14 +1994,25 @@ async function generateDesignedPDF() {
       doc.text('NEOBEX • catalogue.neobex.ca', 20, pageH - 15);
       doc.text((ci+1) + ' / ' + cats.length, pageW - 20, pageH - 15, {align:'right'});
 
-      // --- PRODUCT GRID PAGES (2 columns × 3 rows) ---
+      // --- PRODUCT LIST PAGES (single column, compact rows) ---
       var imgs = await loadImagesBatch(catProducts, 6);
 
-      var cols = 2, rows = 3, perPage = cols * rows;
-      var marginX = 18, marginTop = 28, gutter = 6;
-      var cardW = (pageW - marginX*2 - gutter*(cols-1)) / cols;
-      var bottomMargin = 18;
-      var cardH = (pageH - marginTop - bottomMargin - gutter*(rows-1)) / rows;
+      var marginX = 15;
+      var topY = 28;
+      var bottomY = pageH - 18;
+      var rowH = 19;                 // mm per row — compact list look
+      var perPage = Math.floor((bottomY - topY) / rowH);  // ~14 rows / A4 page
+
+      // Column layout inside each row
+      var imgW = 16;                 // mm image square
+      var imgPad = 1.5;
+      var rowX = marginX;
+      var rowW = pageW - marginX*2;
+      var colImgX = rowX;
+      var colTextX = colImgX + imgW + 5;
+      var colSkuW = 36;
+      var colSkuX = rowX + rowW - colSkuW;
+      var colTextW = colSkuX - colTextX - 4;
 
       var totalPages = Math.ceil(catProducts.length / perPage);
       for (var pgi = 0; pgi < totalPages; pgi++) {
@@ -2009,86 +2020,108 @@ async function generateDesignedPDF() {
         setFill(SOFT); doc.rect(0, 0, pageW, pageH, 'F');
         drawBrandHeader(catLabel);
 
+        // Column header strip
+        setFill([255,255,255]);
+        doc.roundedRect(marginX, topY - 6, rowW, 6, 1, 1, 'F');
+        setStroke(LINE); doc.setLineWidth(0.2);
+        doc.roundedRect(marginX, topY - 6, rowW, 6, 1, 1, 'S');
+        setText(GRAY); doc.setFont('helvetica','bold'); doc.setFontSize(7);
+        doc.text((lg==='fr'?'IMAGE':'IMAGE'), colImgX + imgW/2, topY - 1.7, {align:'center'});
+        doc.text((lg==='fr'?'PRODUIT':'PRODUCT'), colTextX, topY - 1.7);
+        doc.text('SKU', colSkuX + colSkuW/2, topY - 1.7, {align:'center'});
+
         var slice = catProducts.slice(pgi*perPage, (pgi+1)*perPage);
         for (var k = 0; k < slice.length; k++) {
           var p = slice[k];
-          var col = k % cols;
-          var row = Math.floor(k / cols);
-          var x = marginX + col * (cardW + gutter);
-          var y = marginTop + row * (cardH + gutter);
+          var y = topY + k * rowH;
 
-          // Card background
-          setFill([255,255,255]);
-          doc.roundedRect(x, y, cardW, cardH, 2.5, 2.5, 'F');
-          setStroke(LINE); doc.setLineWidth(0.2);
-          doc.roundedRect(x, y, cardW, cardH, 2.5, 2.5, 'S');
+          // Alternating background for readability
+          if (k % 2 === 0) {
+            setFill([255, 255, 255]);
+          } else {
+            setFill([250, 251, 253]);
+          }
+          doc.rect(marginX, y, rowW, rowH, 'F');
 
-          // Image area (top 55% of card)
-          var imgArea = {x: x + 6, y: y + 6, w: cardW - 12, h: cardH * 0.50};
+          // Image
+          var ix = colImgX + (imgW - (imgW - imgPad*2)) / 2;
+          var iy = y + (rowH - (imgW - imgPad*2)) / 2;
+          var iSz = imgW - imgPad*2;
           var imgData = imgs[p.id];
           if (imgData) {
             try {
-              // Compute image dims preserving aspect ratio
-              var img = new Image();
-              // We can't getNaturalSize sync from dataURL without DOM, but jsPDF stores aspect
-              // Just fit the image into the area
-              var iw = imgArea.w * 0.85;
-              var ih = imgArea.h * 0.85;
-              var ix = imgArea.x + (imgArea.w - iw) / 2;
-              var iy = imgArea.y + (imgArea.h - ih) / 2;
-              // Light bg for image area
-              setFill([252, 253, 254]);
-              doc.roundedRect(imgArea.x, imgArea.y, imgArea.w, imgArea.h, 1.5, 1.5, 'F');
-              doc.addImage(imgData, 'JPEG', ix, iy, iw, ih, undefined, 'FAST');
-            } catch(e) { console.warn('addImage card', e); }
+              doc.addImage(imgData, 'JPEG', ix, iy, iSz, iSz, undefined, 'FAST');
+            } catch(e) {}
           } else {
-            setFill([248, 250, 252]);
-            doc.roundedRect(imgArea.x, imgArea.y, imgArea.w, imgArea.h, 1.5, 1.5, 'F');
-            setText(GRAY2); doc.setFontSize(7);
-            doc.text(lg==='fr'?'Sans image':'No image', imgArea.x + imgArea.w/2, imgArea.y + imgArea.h/2, {align:'center', baseline:'middle'});
+            setFill([240, 244, 248]);
+            doc.roundedRect(ix, iy, iSz, iSz, 1, 1, 'F');
           }
 
-          // Text area below
-          var textY = imgArea.y + imgArea.h + 4;
-          var textX = x + 6;
-          var textW = cardW - 12;
-
-          // Product name
+          // Product name (bold, up to 2 lines)
+          var textTopY = y + 5.5;
           setText(INK); doc.setFont('helvetica','bold'); doc.setFontSize(9);
           var name = (lg==='fr' ? p.name_fr : p.name_en) || '';
-          var nameLines = doc.splitTextToSize(name, textW);
-          // Limit to 3 lines
-          if (nameLines.length > 3) {
-            nameLines = nameLines.slice(0, 3);
-            nameLines[2] = nameLines[2].slice(0, -3) + '…';
+          var nameLines = doc.splitTextToSize(name, colTextW);
+          if (nameLines.length > 2) {
+            nameLines = nameLines.slice(0, 2);
+            nameLines[1] = nameLines[1].slice(0, -2) + '…';
           }
-          doc.text(nameLines, textX, textY + 2.5);
-          var textCursorY = textY + 2.5 + nameLines.length * 3.5;
+          doc.text(nameLines, colTextX, textTopY);
 
-          // Pack size pill
+          // Below name: pack size + sizes badges
+          var subY = textTopY + (nameLines.length * 3.5) + 1.5;
+          var bx = colTextX;
           if (p.qty) {
-            var qtyText = p.qty;
             doc.setFont('helvetica','normal'); doc.setFontSize(7);
-            var qtyW = doc.getTextWidth(qtyText) + 4;
-            setFill(BPALE);
-            doc.roundedRect(textX, textCursorY + 1, Math.min(qtyW, textW), 4, 1, 1, 'F');
-            setText(BLUE);
-            doc.text(qtyText.substring(0, 30), textX + 2, textCursorY + 4);
-            textCursorY += 7;
+            var qty = String(p.qty).substring(0, 38);
+            var qw = doc.getTextWidth(qty) + 4;
+            setFill(BPALE); doc.roundedRect(bx, subY - 2.8, qw, 4, 1, 1, 'F');
+            setText(BLUE); doc.text(qty, bx + 2, subY);
+            bx += qw + 2.5;
+          }
+          if (p.sizes && p.sizes.length) {
+            doc.setFont('helvetica','bold'); doc.setFontSize(6.5);
+            for (var si = 0; si < p.sizes.length && bx < colSkuX - 8; si++) {
+              var sz = String(p.sizes[si]);
+              var sw = doc.getTextWidth(sz) + 3;
+              setFill(GPALE); doc.roundedRect(bx, subY - 2.6, sw, 3.8, 0.8, 0.8, 'F');
+              setText([85, 130, 35]); doc.text(sz, bx + 1.5, subY);
+              bx += sw + 1.5;
+            }
+          }
+          if (p.mil) {
+            doc.setFont('helvetica','bold'); doc.setFontSize(6.5);
+            var ml = String(p.mil);
+            var mw = doc.getTextWidth(ml) + 3;
+            if (bx + mw < colSkuX - 4) {
+              setFill(GPALE); doc.roundedRect(bx, subY - 2.6, mw, 3.8, 0.8, 0.8, 'F');
+              setText([85, 130, 35]); doc.text(ml, bx + 1.5, subY);
+            }
           }
 
-          // SKU at bottom of card
-          var skuY = y + cardH - 5;
+          // SKU column (right-aligned text inside a subtle pill)
           if (p.skus && p.skus.length > 0) {
-            doc.setFont('courier','bold'); doc.setFontSize(8);
-            setText(BLUE);
-            var skuStr = p.skus[0];
-            if (p.skus.length > 1) skuStr += ' +' + (p.skus.length - 1);
+            var sku = p.skus[0];
+            doc.setFont('courier','bold'); doc.setFontSize(8.5);
             // Truncate if too long
-            while (doc.getTextWidth(skuStr) > textW - 4 && skuStr.length > 4) {
-              skuStr = skuStr.slice(0, -1);
+            while (doc.getTextWidth(sku) > colSkuW - 6 && sku.length > 4) sku = sku.slice(0, -1);
+            setFill(BPALE);
+            var skuPillH = 5.5;
+            var skuPillY = y + (rowH - skuPillH) / 2;
+            doc.roundedRect(colSkuX + 2, skuPillY, colSkuW - 4, skuPillH, 1, 1, 'F');
+            setText(BLUE);
+            doc.text(sku, colSkuX + colSkuW/2, skuPillY + 3.7, {align:'center'});
+            if (p.skus.length > 1) {
+              doc.setFont('helvetica','normal'); doc.setFontSize(6);
+              setText(GRAY);
+              doc.text('+' + (p.skus.length - 1), colSkuX + colSkuW - 3, skuPillY + skuPillH + 2.5, {align:'right'});
             }
-            doc.text(skuStr, textX, skuY);
+          }
+
+          // Bottom hairline divider
+          if (k < slice.length - 1) {
+            setStroke(LINE); doc.setLineWidth(0.15);
+            doc.line(marginX + 3, y + rowH, marginX + rowW - 3, y + rowH);
           }
         }
 
