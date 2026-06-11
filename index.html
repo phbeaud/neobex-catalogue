@@ -1675,29 +1675,68 @@ function loadPdfLibs() {
   });
 }
 
-// Convert an image URL to a base64 dataURL via canvas (for embedding in PDF)
+// Convert an image URL to a base64 dataURL — uses fetch (avoids CORS canvas-tainting),
+// then re-rasterizes via canvas to bound size & normalize format.
 function imgUrlToDataURL(url) {
   return new Promise(function(resolve){
     if (!url) { resolve(null); return; }
-    var img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = function(){
-      try {
-        var canvas = document.createElement('canvas');
-        var maxDim = 200;
-        var scale = Math.min(maxDim / img.width, maxDim / img.height, 1);
-        canvas.width = Math.max(1, Math.round(img.width * scale));
-        canvas.height = Math.max(1, Math.round(img.height * scale));
-        var ctx = canvas.getContext('2d');
-        ctx.fillStyle = '#fff';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL('image/jpeg', 0.85));
-      } catch(e){ resolve(null); }
-    };
-    img.onerror = function(){ resolve(null); };
-    img.src = url;
+    fetch(url, { mode: 'cors', cache: 'force-cache' })
+      .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.blob(); })
+      .then(function(blob){
+        return new Promise(function(res, rej){
+          var fr = new FileReader();
+          fr.onload = function(){ res(fr.result); };
+          fr.onerror = function(){ rej(new Error('FileReader')); };
+          fr.readAsDataURL(blob);
+        });
+      })
+      .then(function(rawDataUrl){
+        // Resize via canvas to keep PDF small
+        return new Promise(function(res){
+          var img = new Image();
+          img.onload = function(){
+            try {
+              var canvas = document.createElement('canvas');
+              var maxDim = 200;
+              var scale = Math.min(maxDim / img.width, maxDim / img.height, 1);
+              canvas.width = Math.max(1, Math.round(img.width * scale));
+              canvas.height = Math.max(1, Math.round(img.height * scale));
+              var ctx = canvas.getContext('2d');
+              ctx.fillStyle = '#fff';
+              ctx.fillRect(0, 0, canvas.width, canvas.height);
+              ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+              res(canvas.toDataURL('image/jpeg', 0.85));
+            } catch(e){
+              // Fallback: return the raw dataURL as-is
+              res(rawDataUrl);
+            }
+          };
+          img.onerror = function(){ res(rawDataUrl); };
+          img.src = rawDataUrl;
+        });
+      })
+      .then(resolve)
+      .catch(function(e){ console.warn('img load fail:', url, e.message); resolve(null); });
   });
+}
+
+// Concurrency-limited parallel image loader (avoids overwhelming browser/network)
+async function loadImagesBatch(products, concurrency) {
+  concurrency = concurrency || 6;
+  var byId = {};
+  var queue = products.slice();
+  async function worker() {
+    while (queue.length) {
+      var p = queue.shift();
+      if (!p) continue;
+      try { byId[p.id] = await imgUrlToDataURL(p.img); }
+      catch(e) { byId[p.id] = null; }
+    }
+  }
+  var workers = [];
+  for (var i = 0; i < concurrency; i++) workers.push(worker());
+  await Promise.all(workers);
+  return byId;
 }
 
 // Convert an SVG string into a PNG dataURL
@@ -1876,18 +1915,15 @@ async function generateDesignedPDF() {
 
       // --- PRODUCT TABLE PAGES ---
       doc.addPage();
-      // Pre-load images for this category (small ones)
-      var rowImagesByIdx = {};
-      var imgPromises = catProducts.map(function(p, idx){
-        return imgUrlToDataURL(p.img).then(function(data){ rowImagesByIdx[idx] = data; });
-      });
-      await Promise.all(imgPromises);
+      // Pre-load images by product ID (concurrency-limited fetch)
+      var rowImagesById = await loadImagesBatch(catProducts, 6);
 
       var rows = catProducts.map(function(p){
         var name = (lg==='fr' ? p.name_fr : p.name_en) || '';
         var sku = (p.skus && p.skus[0]) ? p.skus[0] : '';
         if (p.skus && p.skus.length > 1) sku += ' +' + (p.skus.length - 1);
-        return [ '', name, p.qty || '', sku ];
+        // Embed the product id as the first column raw value so didDrawCell can look up image
+        return [ p.id, name, p.qty || '', sku ];
       });
 
       doc.autoTable({
@@ -1904,22 +1940,28 @@ async function generateDesignedPDF() {
         headStyles: { fillColor: BLUE, textColor: [255,255,255], fontStyle:'bold', halign:'left', fontSize:9 },
         alternateRowStyles: { fillColor: [250,251,253] },
         columnStyles: {
-          0: { cellWidth: 22, minCellHeight: 22, halign:'center' },
+          0: { cellWidth: 22, minCellHeight: 22, halign:'center', textColor:[255,255,255] },
           1: { cellWidth: 'auto' },
           2: { cellWidth: 35 },
           3: { cellWidth: 30, font:'courier', fontSize:8 }
         },
         margin: { left: 12, right: 12, top: 32, bottom: 18 },
+        didParseCell: function(data) {
+          // Hide product-id text in column 0 (we draw image over it)
+          if (data.section === 'body' && data.column.index === 0) {
+            data.cell.text = [''];
+          }
+        },
         didDrawCell: function(data) {
-          if (data.section === 'body' && data.column.index === 0 && data.cell.raw === '') {
-            var idx = data.row.index;
-            var imgData = rowImagesByIdx[idx];
+          if (data.section === 'body' && data.column.index === 0) {
+            var pid = data.row.raw && data.row.raw[0];
+            var imgData = pid ? rowImagesById[pid] : null;
             if (imgData) {
               var pad = 1.5;
               var size = Math.min(data.cell.width - pad*2, data.cell.height - pad*2, 18);
               var x = data.cell.x + (data.cell.width - size) / 2;
               var y = data.cell.y + (data.cell.height - size) / 2;
-              try { doc.addImage(imgData, 'JPEG', x, y, size, size); } catch(e){}
+              try { doc.addImage(imgData, 'JPEG', x, y, size, size); } catch(e){ console.warn('addImage fail', e); }
             }
           }
         },
