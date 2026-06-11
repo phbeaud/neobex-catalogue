@@ -1780,17 +1780,43 @@ async function generateDesignedPDF() {
     var jsPDF = window.jspdf.jsPDF;
     var doc = new jsPDF({orientation:'portrait', unit:'mm', format:'a4'});
 
-    var BLUE = [27, 79, 138];        // #1B4F8A
-    var GREEN = [107, 172, 63];      // #6BAC3F
-    var BPALE = [232, 240, 251];     // #E8F0FB
-    var DARK = [15, 23, 42];         // #0F172A
-    var GRAY = [100, 116, 139];      // #64748B
-    var LIGHT = [241, 245, 249];     // #F1F5F9
+    // Brand palette
+    var BLUE   = [27, 79, 138];     // #1B4F8A
+    var BLUE_D = [13, 50, 92];      // darker blue
+    var GREEN  = [107, 172, 63];    // #6BAC3F
+    var BPALE  = [232, 240, 251];   // #E8F0FB
+    var GPALE  = [235, 245, 225];   // light green
+    var INK    = [15, 23, 42];      // #0F172A
+    var GRAY   = [100, 116, 139];   // #64748B
+    var GRAY2  = [148, 163, 184];   // lighter
+    var SOFT   = [248, 250, 252];   // page bg
+    var LINE   = [226, 232, 240];   // borders
 
     var pageW = doc.internal.pageSize.getWidth();
     var pageH = doc.internal.pageSize.getHeight();
 
-    // === GROUP PRODUCTS BY CATEGORY ===
+    // --- Helpers ---
+    function setFill(c){ doc.setFillColor(c[0], c[1], c[2]); }
+    function setText(c){ doc.setTextColor(c[0], c[1], c[2]); }
+    function setStroke(c){ doc.setDrawColor(c[0], c[1], c[2]); }
+    function drawBrandFooter(pageLabel){
+      setStroke(LINE); doc.setLineWidth(0.2);
+      doc.line(15, pageH - 14, pageW - 15, pageH - 14);
+      setText(GRAY); doc.setFont('helvetica','normal'); doc.setFontSize(8);
+      doc.text('catalogue.neobex.ca', 15, pageH - 8);
+      doc.text(pageLabel, pageW - 15, pageH - 8, {align:'right'});
+    }
+    function drawBrandHeader(catLabel){
+      setFill(BLUE); doc.rect(0, 0, pageW, 18, 'F');
+      setFill(GREEN); doc.rect(0, 18, pageW, 1.2, 'F');
+      setText([255,255,255]); doc.setFont('helvetica','bold'); doc.setFontSize(11);
+      doc.text('NEOBEX', 15, 12);
+      doc.setFont('helvetica','normal'); doc.setFontSize(9);
+      if (catLabel) doc.text(catLabel, pageW/2, 12, {align:'center'});
+      doc.setFontSize(8); doc.text('Catalogue 2026', pageW - 15, 12, {align:'right'});
+    }
+
+    // === DATA ===
     var products = P.slice().sort(function(a,b){ return (a.sort_order||0) - (b.sort_order||0); });
     var cats = [];
     var byCat = {};
@@ -1798,195 +1824,305 @@ async function generateDesignedPDF() {
       if (!byCat[p.cat_en]) { byCat[p.cat_en] = []; cats.push(p.cat_en); }
       byCat[p.cat_en].push(p);
     });
+    // TOC page numbers will be filled in as we generate
+    var tocEntries = []; // {label, products, startPage}
 
-    // === MAIN TITLE PAGE ===
-    doc.setFillColor.apply(doc, BLUE);
-    doc.rect(0, 0, pageW, pageH, 'F');
-    // Decorative green half-circle
-    doc.setFillColor.apply(doc, GREEN);
-    doc.circle(pageW + 20, pageH - 30, 80, 'F');
-    doc.setFillColor(255,255,255);
-    doc.circle(-20, 30, 60, 'F');
+    // ====================================
+    // PAGE 1 — Main Cover
+    // ====================================
+    setFill(BLUE); doc.rect(0, 0, pageW, pageH, 'F');
+    // Decorative shapes
+    setFill(BLUE_D); doc.circle(pageW + 40, -20, 110, 'F');
+    setFill(GREEN); doc.circle(-30, pageH + 30, 90, 'F');
+    setFill([255,255,255,0]); // (placeholder for opacity workaround)
+    // Soft white panels - top right
+    setFill([255,255,255]); doc.circle(pageW - 25, 35, 4, 'F');
+    setFill(GREEN); doc.circle(pageW - 18, 35, 2, 'F');
 
-    // Center white card
-    doc.setFillColor(255,255,255);
-    doc.roundedRect(20, 60, pageW - 40, 130, 5, 5, 'F');
-    doc.setTextColor.apply(doc, BLUE);
-    doc.setFont('helvetica','bold');
-    doc.setFontSize(48);
-    doc.text('NEOBEX', pageW/2, 100, {align:'center'});
-    doc.setFontSize(14);
-    doc.setTextColor.apply(doc, GRAY);
-    doc.setFont('helvetica','normal');
-    doc.text('CATALOGUE 2026', pageW/2, 115, {align:'center'});
-    doc.setDrawColor.apply(doc, GREEN);
-    doc.setLineWidth(0.8);
-    doc.line(pageW/2 - 25, 125, pageW/2 + 25, 125);
-    doc.setTextColor.apply(doc, DARK);
-    doc.setFontSize(11);
-    doc.text((lg==='fr'?'Produits industriels':'Industrial Products'), pageW/2, 145, {align:'center'});
-    doc.setFontSize(10);
-    doc.setTextColor.apply(doc, GRAY);
-    doc.text(products.length + (lg==='fr'?' produits • ':' products • ') + cats.length + (lg==='fr'?' catégories':' categories'), pageW/2, 158, {align:'center'});
-    doc.setFontSize(9);
-    doc.text('catalogue.neobex.ca', pageW/2, 175, {align:'center'});
+    // Center card
+    setFill([255,255,255]);
+    doc.roundedRect(25, 75, pageW - 50, 130, 6, 6, 'F');
 
-    // Footer date
-    doc.setTextColor(255,255,255);
-    doc.setFontSize(8);
+    // Inside card
+    setText(BLUE); doc.setFont('helvetica','bold'); doc.setFontSize(54);
+    doc.text('NEOBEX', pageW/2, 115, {align:'center'});
+
+    setStroke(GREEN); doc.setLineWidth(1);
+    doc.line(pageW/2 - 30, 124, pageW/2 + 30, 124);
+
+    setText(GRAY); doc.setFont('helvetica','normal'); doc.setFontSize(12);
+    doc.text('CATALOGUE 2026', pageW/2, 135, {align:'center'});
+
+    setText(INK); doc.setFont('helvetica','bold'); doc.setFontSize(16);
+    doc.text(lg==='fr'?'Produits industriels & sanitaires':'Industrial & Sanitary Products', pageW/2, 160, {align:'center'});
+
+    setText(GRAY); doc.setFont('helvetica','normal'); doc.setFontSize(10);
+    doc.text(products.length + (lg==='fr'?' produits':' products'), pageW/2, 172, {align:'center'});
+    doc.text(cats.length + (lg==='fr'?' catégories':' categories'), pageW/2, 180, {align:'center'});
+
+    // Bottom info on blue area
+    setText([255,255,255]); doc.setFont('helvetica','normal'); doc.setFontSize(9);
     var d = new Date();
     var months = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
     var dateStr = d.getDate()+' '+months[d.getMonth()]+' '+d.getFullYear();
-    doc.text((lg==='fr'?'Édition du ':'Edition: ') + dateStr, pageW/2, pageH - 15, {align:'center'});
+    doc.text(lg==='fr' ? ('Édition du ' + dateStr) : ('Edition: ' + dateStr), pageW/2, pageH - 30, {align:'center'});
+    doc.setFontSize(8);
+    setText([200, 220, 255]);
+    doc.text('catalogue.neobex.ca', pageW/2, pageH - 22, {align:'center'});
 
-    // === FOR EACH CATEGORY ===
+    // ====================================
+    // PAGE 2 — Table of Contents
+    // ====================================
+    doc.addPage();
+    setFill(SOFT); doc.rect(0, 0, pageW, pageH, 'F');
+    drawBrandHeader('');
+
+    setText(INK); doc.setFont('helvetica','bold'); doc.setFontSize(28);
+    doc.text(lg==='fr'?'Sommaire':'Contents', 20, 42);
+
+    setStroke(GREEN); doc.setLineWidth(0.8);
+    doc.line(20, 47, 60, 47);
+
+    setText(GRAY); doc.setFont('helvetica','normal'); doc.setFontSize(10);
+    doc.text(cats.length + (lg==='fr'?' catégories • ':' categories • ') + products.length + (lg==='fr'?' produits':' products'), 20, 55);
+
+    // Provisional TOC; we will fill in page numbers after the second pass
+    // We do two passes: first compute pages, then redraw doc. Simpler approach:
+    // Since pages depend on grid layout, we'll just estimate using product count.
+    var PER_PAGE = 6; // grid 2x3
+    var currentPage = 2; // we're on page 2 (TOC), next addPage will be page 3
+    cats.forEach(function(c, idx){
+      var pp = byCat[c];
+      var coverPage = currentPage + 1;
+      var tablePages = Math.ceil(pp.length / PER_PAGE);
+      currentPage = coverPage + tablePages;
+      tocEntries.push({cat: c, label: (CM[c] && CM[c][lg]) || c, products: pp.length, page: coverPage});
+    });
+
+    var yToc = 70;
+    setText(INK); doc.setFont('helvetica','normal'); doc.setFontSize(11);
+    tocEntries.forEach(function(e, idx){
+      // dot line + page number
+      var num = String(idx + 1).padStart(2, '0');
+      setText(GREEN); doc.setFont('helvetica','bold'); doc.setFontSize(10);
+      doc.text(num, 20, yToc);
+      setText(INK); doc.setFont('helvetica','normal'); doc.setFontSize(11);
+      doc.text(e.label, 35, yToc);
+      // dots
+      var dotsX = 35 + doc.getTextWidth(e.label) + 3;
+      var dotsEndX = pageW - 35;
+      setText(GRAY2); doc.setFontSize(8);
+      var dotStr = '';
+      var dotW = doc.getTextWidth('. ');
+      var nDots = Math.floor((dotsEndX - dotsX) / dotW);
+      for (var i = 0; i < nDots; i++) dotStr += '. ';
+      doc.text(dotStr, dotsX, yToc);
+      setText(BLUE); doc.setFont('helvetica','bold'); doc.setFontSize(11);
+      doc.text(String(e.page), pageW - 20, yToc, {align:'right'});
+      setText(GRAY); doc.setFont('helvetica','normal'); doc.setFontSize(8);
+      doc.text(e.products + (lg==='fr'?' produits':' products'), 35, yToc + 4);
+      yToc += 13;
+      if (yToc > pageH - 30) {
+        drawBrandFooter('— ' + doc.internal.getNumberOfPages() + ' —');
+        doc.addPage();
+        setFill(SOFT); doc.rect(0, 0, pageW, pageH, 'F');
+        drawBrandHeader('');
+        yToc = 35;
+      }
+    });
+    drawBrandFooter('— ' + doc.internal.getNumberOfPages() + ' —');
+
+    // ====================================
+    // PER-CATEGORY: cover page + product grid pages
+    // ====================================
     for (var ci = 0; ci < cats.length; ci++) {
       var cat = cats[ci];
       var catLabel = (CM[cat] && CM[cat][lg]) || cat;
       var catProducts = byCat[cat];
 
-      // --- COVER PAGE for category ---
+      // --- CATEGORY COVER PAGE ---
       doc.addPage();
-      // Background
-      doc.setFillColor.apply(doc, LIGHT);
-      doc.rect(0, 0, pageW, pageH, 'F');
-      // Top stripe
-      doc.setFillColor.apply(doc, BLUE);
-      doc.rect(0, 0, pageW, 35, 'F');
-      doc.setTextColor(255,255,255);
-      doc.setFontSize(10);
-      doc.setFont('helvetica','bold');
-      doc.text('NEOBEX', 15, 22);
-      doc.setFont('helvetica','normal');
-      doc.setFontSize(9);
-      doc.text(lg==='fr'?'Catalogue 2026':'Catalogue 2026', pageW - 15, 22, {align:'right'});
+      setFill(BLUE); doc.rect(0, 0, pageW, pageH, 'F');
+      // Decorative half-circles
+      setFill(BLUE_D); doc.circle(-30, -30, 80, 'F');
+      setFill(GREEN); doc.circle(pageW + 30, pageH + 30, 90, 'F');
 
-      // Section number
-      doc.setTextColor.apply(doc, GRAY);
-      doc.setFontSize(11);
-      doc.text((lg==='fr'?'SECTION ':'SECTION ') + String(ci+1).padStart(2,'0'), pageW/2, 70, {align:'center'});
+      // Big ghost section number on background
+      setText([41, 96, 154]); // slightly lighter blue ("ghost")
+      doc.setFont('helvetica','bold'); doc.setFontSize(160);
+      doc.text(String(ci + 1).padStart(2, '0'), pageW - 30, 110, {align:'right'});
 
-      // Big colored circle with icon
-      var cx = pageW/2;
+      // Centered icon circle (white)
+      var cx = 70;
       var cy = pageH/2 - 10;
-      var radius = 28;
-      doc.setFillColor.apply(doc, BLUE);
-      doc.circle(cx, cy, radius, 'F');
-      doc.setFillColor.apply(doc, GREEN);
-      doc.circle(cx + radius - 6, cy - radius + 6, 6, 'F');
+      setFill([255,255,255]);
+      doc.circle(cx, cy, 32, 'F');
+      setFill(GREEN); doc.circle(cx + 25, cy - 25, 5, 'F');
 
-      // Embed category icon as PNG
+      // Try to embed category icon centered in the circle
       try {
         var iconSvg = (typeof IC !== 'undefined' && IC[cat]) ? IC[cat] : (IC && IC['d']) || '';
         if (iconSvg) {
-          var iconColored = buildCategoryIconSVG(iconSvg, '#FFFFFF');
+          var iconColored = buildCategoryIconSVG(iconSvg, 'rgb(' + BLUE.join(',') + ')');
           var iconData = await svgToDataURL(iconColored, 256);
           if (iconData) {
-            var iconSize = 30;
+            var iconSize = 36;
             doc.addImage(iconData, 'PNG', cx - iconSize/2, cy - iconSize/2, iconSize, iconSize);
           }
         }
       } catch(e) { console.warn('Icon render:', e); }
 
-      // Category name
-      doc.setTextColor.apply(doc, DARK);
-      doc.setFont('helvetica','bold');
-      doc.setFontSize(28);
-      // Wrap category name if too long
-      var nameLines = doc.splitTextToSize(catLabel, pageW - 30);
-      doc.text(nameLines, pageW/2, cy + radius + 18, {align:'center'});
+      // "SECTION" small label
+      setText([200, 220, 255]); doc.setFont('helvetica','bold'); doc.setFontSize(10);
+      doc.text((lg==='fr'?'SECTION ':'SECTION ') + String(ci + 1).padStart(2, '0'), 20, 35);
 
-      // Divider
-      var yAfterName = cy + radius + 18 + (nameLines.length * 10);
-      doc.setDrawColor.apply(doc, GREEN);
-      doc.setLineWidth(1);
-      doc.line(pageW/2 - 20, yAfterName + 5, pageW/2 + 20, yAfterName + 5);
+      // Category title (multiline wrap)
+      setText([255,255,255]); doc.setFont('helvetica','bold'); doc.setFontSize(32);
+      var titleX = 115;
+      var titleMaxW = pageW - titleX - 20;
+      var titleLines = doc.splitTextToSize(catLabel, titleMaxW);
+      var titleY = cy - 5 - ((titleLines.length - 1) * 5);
+      doc.text(titleLines, titleX, titleY);
+
+      // Green divider under title
+      setStroke(GREEN); doc.setLineWidth(1.2);
+      var divY = titleY + (titleLines.length * 11) + 2;
+      doc.line(titleX, divY, titleX + 30, divY);
 
       // Product count
-      doc.setTextColor.apply(doc, GRAY);
-      doc.setFont('helvetica','normal');
-      doc.setFontSize(13);
-      doc.text(catProducts.length + (lg==='fr'?(catProducts.length>1?' produits':' produit'):(catProducts.length>1?' products':' product')), pageW/2, yAfterName + 18, {align:'center'});
+      setText([200, 220, 255]); doc.setFont('helvetica','normal'); doc.setFontSize(13);
+      doc.text(catProducts.length + (lg==='fr'?(catProducts.length>1?' produits':' produit'):(catProducts.length>1?' products':' product')), titleX, divY + 12);
 
-      // Footer
-      doc.setTextColor.apply(doc, GRAY);
-      doc.setFontSize(8);
-      doc.text(catLabel + ' • ' + (ci+1) + '/' + cats.length, pageW/2, pageH - 10, {align:'center'});
+      // Bottom strip
+      setFill([255,255,255,0.05]);
+      // page label
+      setText([200, 220, 255]); doc.setFont('helvetica','normal'); doc.setFontSize(8);
+      doc.text('NEOBEX • catalogue.neobex.ca', 20, pageH - 15);
+      doc.text((ci+1) + ' / ' + cats.length, pageW - 20, pageH - 15, {align:'right'});
 
-      // --- PRODUCT TABLE PAGES ---
-      doc.addPage();
-      // Pre-load images by product ID (concurrency-limited fetch)
-      var rowImagesById = await loadImagesBatch(catProducts, 6);
+      // --- PRODUCT GRID PAGES (2 columns × 3 rows) ---
+      var imgs = await loadImagesBatch(catProducts, 6);
 
-      var rows = catProducts.map(function(p){
-        var name = (lg==='fr' ? p.name_fr : p.name_en) || '';
-        var sku = (p.skus && p.skus[0]) ? p.skus[0] : '';
-        if (p.skus && p.skus.length > 1) sku += ' +' + (p.skus.length - 1);
-        // Embed the product id as the first column raw value so didDrawCell can look up image
-        return [ p.id, name, p.qty || '', sku ];
-      });
+      var cols = 2, rows = 3, perPage = cols * rows;
+      var marginX = 18, marginTop = 28, gutter = 6;
+      var cardW = (pageW - marginX*2 - gutter*(cols-1)) / cols;
+      var bottomMargin = 18;
+      var cardH = (pageH - marginTop - bottomMargin - gutter*(rows-1)) / rows;
 
-      doc.autoTable({
-        startY: 35,
-        head: [[
-          lg==='fr'?'Image':'Image',
-          lg==='fr'?'Produit':'Product',
-          lg==='fr'?'Unité d\'usage':'Pack size',
-          'SKU'
-        ]],
-        body: rows,
-        theme: 'grid',
-        styles: { font:'helvetica', fontSize:9, cellPadding:3, valign:'middle', lineColor:[226,232,240], lineWidth:0.1 },
-        headStyles: { fillColor: BLUE, textColor: [255,255,255], fontStyle:'bold', halign:'left', fontSize:9 },
-        alternateRowStyles: { fillColor: [250,251,253] },
-        columnStyles: {
-          0: { cellWidth: 22, minCellHeight: 22, halign:'center', textColor:[255,255,255] },
-          1: { cellWidth: 'auto' },
-          2: { cellWidth: 35 },
-          3: { cellWidth: 30, font:'courier', fontSize:8 }
-        },
-        margin: { left: 12, right: 12, top: 32, bottom: 18 },
-        didParseCell: function(data) {
-          // Hide product-id text in column 0 (we draw image over it)
-          if (data.section === 'body' && data.column.index === 0) {
-            data.cell.text = [''];
+      var totalPages = Math.ceil(catProducts.length / perPage);
+      for (var pgi = 0; pgi < totalPages; pgi++) {
+        doc.addPage();
+        setFill(SOFT); doc.rect(0, 0, pageW, pageH, 'F');
+        drawBrandHeader(catLabel);
+
+        var slice = catProducts.slice(pgi*perPage, (pgi+1)*perPage);
+        for (var k = 0; k < slice.length; k++) {
+          var p = slice[k];
+          var col = k % cols;
+          var row = Math.floor(k / cols);
+          var x = marginX + col * (cardW + gutter);
+          var y = marginTop + row * (cardH + gutter);
+
+          // Card background
+          setFill([255,255,255]);
+          doc.roundedRect(x, y, cardW, cardH, 2.5, 2.5, 'F');
+          setStroke(LINE); doc.setLineWidth(0.2);
+          doc.roundedRect(x, y, cardW, cardH, 2.5, 2.5, 'S');
+
+          // Image area (top 55% of card)
+          var imgArea = {x: x + 6, y: y + 6, w: cardW - 12, h: cardH * 0.50};
+          var imgData = imgs[p.id];
+          if (imgData) {
+            try {
+              // Compute image dims preserving aspect ratio
+              var img = new Image();
+              // We can't getNaturalSize sync from dataURL without DOM, but jsPDF stores aspect
+              // Just fit the image into the area
+              var iw = imgArea.w * 0.85;
+              var ih = imgArea.h * 0.85;
+              var ix = imgArea.x + (imgArea.w - iw) / 2;
+              var iy = imgArea.y + (imgArea.h - ih) / 2;
+              // Light bg for image area
+              setFill([252, 253, 254]);
+              doc.roundedRect(imgArea.x, imgArea.y, imgArea.w, imgArea.h, 1.5, 1.5, 'F');
+              doc.addImage(imgData, 'JPEG', ix, iy, iw, ih, undefined, 'FAST');
+            } catch(e) { console.warn('addImage card', e); }
+          } else {
+            setFill([248, 250, 252]);
+            doc.roundedRect(imgArea.x, imgArea.y, imgArea.w, imgArea.h, 1.5, 1.5, 'F');
+            setText(GRAY2); doc.setFontSize(7);
+            doc.text(lg==='fr'?'Sans image':'No image', imgArea.x + imgArea.w/2, imgArea.y + imgArea.h/2, {align:'center', baseline:'middle'});
           }
-        },
-        didDrawCell: function(data) {
-          if (data.section === 'body' && data.column.index === 0) {
-            var pid = data.row.raw && data.row.raw[0];
-            var imgData = pid ? rowImagesById[pid] : null;
-            if (imgData) {
-              var pad = 1.5;
-              var size = Math.min(data.cell.width - pad*2, data.cell.height - pad*2, 18);
-              var x = data.cell.x + (data.cell.width - size) / 2;
-              var y = data.cell.y + (data.cell.height - size) / 2;
-              try { doc.addImage(imgData, 'JPEG', x, y, size, size); } catch(e){ console.warn('addImage fail', e); }
+
+          // Text area below
+          var textY = imgArea.y + imgArea.h + 4;
+          var textX = x + 6;
+          var textW = cardW - 12;
+
+          // Product name
+          setText(INK); doc.setFont('helvetica','bold'); doc.setFontSize(9);
+          var name = (lg==='fr' ? p.name_fr : p.name_en) || '';
+          var nameLines = doc.splitTextToSize(name, textW);
+          // Limit to 3 lines
+          if (nameLines.length > 3) {
+            nameLines = nameLines.slice(0, 3);
+            nameLines[2] = nameLines[2].slice(0, -3) + '…';
+          }
+          doc.text(nameLines, textX, textY + 2.5);
+          var textCursorY = textY + 2.5 + nameLines.length * 3.5;
+
+          // Pack size pill
+          if (p.qty) {
+            var qtyText = p.qty;
+            doc.setFont('helvetica','normal'); doc.setFontSize(7);
+            var qtyW = doc.getTextWidth(qtyText) + 4;
+            setFill(BPALE);
+            doc.roundedRect(textX, textCursorY + 1, Math.min(qtyW, textW), 4, 1, 1, 'F');
+            setText(BLUE);
+            doc.text(qtyText.substring(0, 30), textX + 2, textCursorY + 4);
+            textCursorY += 7;
+          }
+
+          // SKU at bottom of card
+          var skuY = y + cardH - 5;
+          if (p.skus && p.skus.length > 0) {
+            doc.setFont('courier','bold'); doc.setFontSize(8);
+            setText(BLUE);
+            var skuStr = p.skus[0];
+            if (p.skus.length > 1) skuStr += ' +' + (p.skus.length - 1);
+            // Truncate if too long
+            while (doc.getTextWidth(skuStr) > textW - 4 && skuStr.length > 4) {
+              skuStr = skuStr.slice(0, -1);
             }
+            doc.text(skuStr, textX, skuY);
           }
-        },
-        didDrawPage: function(data) {
-          // Header band on each table page
-          doc.setFillColor.apply(doc, BLUE);
-          doc.rect(0, 0, pageW, 22, 'F');
-          doc.setTextColor(255,255,255);
-          doc.setFont('helvetica','bold');
-          doc.setFontSize(10);
-          doc.text('NEOBEX', 12, 13);
-          doc.setFont('helvetica','normal');
-          doc.setFontSize(9);
-          doc.text(catLabel, pageW/2, 13, {align:'center'});
-          doc.setFontSize(8);
-          doc.text((lg==='fr'?'Catalogue 2026':'Catalogue 2026'), pageW - 12, 13, {align:'right'});
-
-          // Footer page number
-          doc.setTextColor.apply(doc, GRAY);
-          doc.setFontSize(8);
-          doc.text('catalogue.neobex.ca', 12, pageH - 8);
-          doc.text(catLabel + ' • ' + doc.internal.getNumberOfPages(), pageW - 12, pageH - 8, {align:'right'});
         }
-      });
+
+        drawBrandFooter(catLabel + ' • ' + (pgi+1) + '/' + totalPages + ' • Page ' + doc.internal.getNumberOfPages());
+      }
     }
+
+    // ====================================
+    // BACK COVER
+    // ====================================
+    doc.addPage();
+    setFill(BLUE); doc.rect(0, 0, pageW, pageH, 'F');
+    setFill(GREEN); doc.circle(pageW/2, pageH + 40, 100, 'F');
+    setFill(BLUE_D); doc.circle(-40, -40, 100, 'F');
+
+    setText([255,255,255]); doc.setFont('helvetica','bold'); doc.setFontSize(40);
+    doc.text('NEOBEX', pageW/2, pageH/2 - 10, {align:'center'});
+    setStroke(GREEN); doc.setLineWidth(1);
+    doc.line(pageW/2 - 25, pageH/2 - 5, pageW/2 + 25, pageH/2 - 5);
+    setText([200,220,255]); doc.setFont('helvetica','normal'); doc.setFontSize(11);
+    doc.text(lg==='fr'?'Pour une soumission complète':'For a complete quote', pageW/2, pageH/2 + 8, {align:'center'});
+    setText([255,255,255]); doc.setFont('helvetica','bold'); doc.setFontSize(14);
+    doc.text('catalogue.neobex.ca', pageW/2, pageH/2 + 22, {align:'center'});
+    doc.setFont('helvetica','normal'); doc.setFontSize(10);
+    doc.text('neobex.ca/nous-joindre', pageW/2, pageH/2 + 32, {align:'center'});
+
+    setText([200,220,255]); doc.setFontSize(8);
+    doc.text((lg==='fr'?'Édition du ':'Edition: ') + dateStr, pageW/2, pageH - 18, {align:'center'});
 
     // === SAVE ===
     var filename = 'Neobex_Catalogue_2026_' + dateStr.replace(/\s/g,'-') + '.pdf';
