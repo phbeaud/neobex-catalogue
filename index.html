@@ -1655,23 +1655,17 @@ function compatBadgeHTML(p){
 }
 
 // === DESIGNED PDF GENERATOR ===
-// Lazy-loads jsPDF + autoTable from CDN, then builds a beautifully designed
-// multi-page PDF with one cover page per category, then product tables.
+// Lazy-loads jsPDF from CDN, then builds a beautifully designed glossy catalogue PDF.
 
 var _pdfLibsLoaded = false;
 function loadPdfLibs() {
   if (_pdfLibsLoaded) return Promise.resolve();
   return new Promise(function(resolve, reject){
-    var loaded = 0;
-    function done(){ loaded++; if(loaded===2){ _pdfLibsLoaded = true; resolve(); } }
     var s1 = document.createElement('script');
     s1.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-    s1.onload = done; s1.onerror = function(){ reject(new Error('jsPDF load failed')); };
+    s1.onload = function(){ _pdfLibsLoaded = true; resolve(); };
+    s1.onerror = function(){ reject(new Error('jsPDF load failed')); };
     document.head.appendChild(s1);
-    var s2 = document.createElement('script');
-    s2.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.0/jspdf.plugin.autotable.min.js';
-    s2.onload = done; s2.onerror = function(){ reject(new Error('autoTable load failed')); };
-    document.head.appendChild(s2);
   });
 }
 
