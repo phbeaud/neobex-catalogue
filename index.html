@@ -1550,14 +1550,15 @@ var Cart = {
     });
     var fullMsg = 'PRODUITS SÉLECTIONNÉS:\n'+lines.join('\n')+'\n\nMESSAGE:\n'+(msg||'(aucun)');
     var payload = {
-      _subject: 'Nouvelle sélection catalogue Neobex',
+      _subject: 'Nouvelle sélection catalogue Neobex — '+company,
+      _replyto: email,
       name: name, company: company, email: email, phone: phone,
       volume: volume, message: fullMsg
     };
     var btn = document.getElementById('sf-send');
     btn.disabled = true; btn.textContent = lg==='fr'?'Envoi...':'Sending...';
     try{
-      var r = await fetch('https://formspree.io/f/mnpapkkn', {
+      var r = await fetch('https://formspree.io/f/xeajaylk', {
         method:'POST',
         headers:{'Content-Type':'application/json','Accept':'application/json'},
         body: JSON.stringify(payload)
