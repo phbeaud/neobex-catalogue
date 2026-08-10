@@ -1550,20 +1550,23 @@ var Cart = {
     });
     var fullMsg = 'PRODUITS SÉLECTIONNÉS:\n'+lines.join('\n')+'\n\nMESSAGE:\n'+(msg||'(aucun)');
     var payload = {
-      _subject: 'Nouvelle sélection catalogue Neobex — '+company,
-      _replyto: email,
+      access_key: '9c2c050b-6ccf-4c76-b9f6-765335b4d1c4',
+      subject: 'Nouvelle sélection catalogue Neobex — '+company,
+      from_name: name + ' (' + company + ')',
+      replyto: email,
       name: name, company: company, email: email, phone: phone,
       volume: volume, message: fullMsg
     };
     var btn = document.getElementById('sf-send');
     btn.disabled = true; btn.textContent = lg==='fr'?'Envoi...':'Sending...';
     try{
-      var r = await fetch('https://formspree.io/f/xeajaylk', {
+      var r = await fetch('https://api.web3forms.com/submit', {
         method:'POST',
         headers:{'Content-Type':'application/json','Accept':'application/json'},
         body: JSON.stringify(payload)
       });
-      if(!r.ok) throw new Error('HTTP '+r.status);
+      var res = await r.json().catch(function(){ return {}; });
+      if(!r.ok || !res.success) throw new Error(res.message || ('HTTP '+r.status));
       document.getElementById('submit-form-wrap').style.display = 'none';
       document.getElementById('submit-success').style.display = '';
     }catch(e){
