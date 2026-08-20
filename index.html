@@ -82,6 +82,9 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);font-
 .th-qty{text-align:left}
 .td-qty{font-size:11.5px;color:var(--text-subtle);line-height:1.35;font-weight:400}
 .mil{display:inline-block;margin-left:4px;padding:1px 5px;background:var(--gpale);color:var(--green);font-size:9.5px;font-weight:600;border-radius:4px;vertical-align:middle;font-family:'JetBrains Mono',monospace}
+.nbx-badge{display:inline-flex;align-items:center;gap:3px;margin-left:6px;padding:1.5px 7px;background:linear-gradient(135deg,#1B4F8A,#2a6fb5);color:#fff;font-size:9px;font-weight:700;letter-spacing:.03em;border-radius:20px;vertical-align:middle;box-shadow:0 1px 3px rgba(27,79,138,.3)}
+.nbx-badge .nbx-dot{width:5px;height:5px;border-radius:50%;background:#6BAC3F;flex-shrink:0}
+.gcard-name .nbx-badge{margin-left:4px;font-size:8.5px;padding:1px 6px}
 .mod-badge{display:inline-block;margin-left:5px;padding:1px 5px;background:#FFF3CD;color:#856404;font-size:9px;border-radius:3px;vertical-align:middle}
 .szl{display:flex;flex-wrap:wrap;gap:3px;margin-top:3px}
 .szc{background:var(--g100);color:var(--text-muted);font-size:10px;font-weight:500;padding:1px 5px;border-radius:4px;font-family:'JetBrains Mono',monospace;border:1px solid var(--border)}
@@ -1287,7 +1290,7 @@ function renderListView(or_, gr){
         + '<button class="ibtn ibtn-del" onclick="askDelete('+i+')" title="Supprimer">'+delIcon+'</button>'
         + '</td>'
         + '<td class="td-img">'+imgHTML(i, src)+'</td>'
-        + '<td class="tdn">'+nm+(p.mil?'<span class="mil">'+p.mil+'</span>':'')+(det?'<br>'+det:'')+compatBadgeHTML(p)+'</td>'
+        + '<td class="tdn">'+nm+(p.mil?'<span class="mil">'+p.mil+'</span>':'')+neobexBadgeHTML(p)+(det?'<br>'+det:'')+compatBadgeHTML(p)+'</td>'
         + '<td class="td-qty">'+(p.qty||'')+'</td>'
         + '<td>'+skuCellA(p.skus, q)+'</td>'
         + '</tr>';
@@ -1317,7 +1320,7 @@ function renderGridView(or_, gr){
         + '<div class="gcard-cb">'+cbHTML(p.id)+'</div>'
         + '<div class="gcard-img">'+imgC+'</div>'
         + '<div class="gcard-body">'
-        + '<div class="gcard-name">'+nm+(p.mil?' <span class="mil">'+p.mil+'</span>':'')+'</div>'
+        + '<div class="gcard-name">'+nm+(p.mil?' <span class="mil">'+p.mil+'</span>':'')+neobexBadgeHTML(p)+'</div>'
         + compatBadgeHTML(p)
         + '<div class="gcard-qty">'+(p.qty||'')+'</div>'
         + '<div class="gcard-skus">'+skus+'</div>'
@@ -1622,6 +1625,15 @@ function getCompatProducts(p){
 }
 
 // Render compatibility badge HTML
+function isNeobexProduct(p){
+  var s = ((p.name_fr || '') + ' ' + (p.name_en || '')).toLowerCase();
+  return s.indexOf('neobex') >= 0;
+}
+function neobexBadgeHTML(p){
+  if(!isNeobexProduct(p)) return '';
+  return '<span class="nbx-badge" title="'+(lg==='fr'?'Produit de marque Neobex':'Neobex brand product')+'"><span class="nbx-dot"></span>NEOBEX</span>';
+}
+
 function compatBadgeHTML(p){
   var c = getCompatProducts(p);
   if(c.dispensers.length){
