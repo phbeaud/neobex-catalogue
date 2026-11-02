@@ -564,10 +564,15 @@ body.edit .td-img::after{content:'✎';position:absolute;top:4px;right:3px;backg
       <button class="btn-add-sku" onclick="addSkuField()">+ Ajouter un SKU</button>
     </div>
     <div class="frow">
-      <label>Fiche technique (PDF)</label>
+      <label>Fiche technique (PDF) — français</label>
       <div class="spec-edit">
         <input type="text" id="edit-spec" placeholder="Lien vers la fiche, ou téléverser un PDF">
-        <label class="spec-upload-btn">Téléverser un PDF<input type="file" accept="application/pdf" id="edit-spec-file" onchange="uploadSpecFile(this)" hidden></label>
+        <label class="spec-upload-btn">Téléverser<input type="file" accept="application/pdf" onchange="uploadSpecFile(this,'edit-spec')" hidden></label>
+      </div>
+      <label style="margin-top:6px">Fiche technique (PDF) — anglais (optionnel)</label>
+      <div class="spec-edit">
+        <input type="text" id="edit-spec-en" placeholder="English data sheet link, or upload">
+        <label class="spec-upload-btn">Téléverser<input type="file" accept="application/pdf" onchange="uploadSpecFile(this,'edit-spec-en')" hidden></label>
       </div>
       <span id="edit-spec-status" class="spec-status"></span>
     </div>
@@ -698,6 +703,7 @@ async function loadProducts() {
         mil: row.mil || '',
         img: row.img_url || '',
         spec: row.spec_url || '',
+        spec_en: row.spec_url_en || '',
         sort_order: row.sort_order || 0
       };
     });
@@ -861,7 +867,7 @@ async function supaUploadImage(file, productId) {
   return SUPA_URL + '/storage/v1/object/public/' + SUPA_BUCKET + '/' + filename;
 }
 
-async function uploadSpecFile(inp){
+async function uploadSpecFile(inp, targetId){
   var f = inp.files && inp.files[0]; if(!f) return;
   var st = document.getElementById('edit-spec-status');
   if(!requireLogin()) return;
@@ -877,7 +883,7 @@ async function uploadSpecFile(inp){
       body: f
     });
     if(!r.ok){ throw new Error(await r.text()); }
-    document.getElementById('edit-spec').value = SUPA_URL + '/storage/v1/object/public/' + SUPA_BUCKET + '/' + path;
+    document.getElementById(targetId||'edit-spec').value = SUPA_URL + '/storage/v1/object/public/' + SUPA_BUCKET + '/' + path;
     st.textContent = '✓ PDF téléversé — cliquez Enregistrer.';
   }catch(e){ st.textContent = 'Erreur : ' + e.message; }
   finally{ inp.value=''; }
@@ -1007,6 +1013,7 @@ function openEditModal(i){
   document.getElementById('edit-sizes').value=(p.sizes||[]).join(', ');
   document.getElementById('edit-cost').value = (COSTS[p.id] !== undefined && COSTS[p.id] !== null) ? COSTS[p.id] : '';
   document.getElementById('edit-spec').value = p.spec || '';
+  document.getElementById('edit-spec-en').value = p.spec_en || '';
   document.getElementById('edit-spec-status').textContent = '';
   var list=document.getElementById('sku-edit-list');
   list.innerHTML='';
@@ -1025,6 +1032,7 @@ function openAddModal(){
   document.getElementById('edit-sizes').value='';
   document.getElementById('edit-cost').value='';
   document.getElementById('edit-spec').value='';
+  document.getElementById('edit-spec-en').value='';
   document.getElementById('edit-spec-status').textContent='';
   document.getElementById('sku-edit-list').innerHTML='';
   addSkuField('');
@@ -1239,13 +1247,14 @@ async function saveEditModal(){
       name_fr: nameFr||nameEn, name_en: nameEn||nameFr,
       cat_en: cat, cat_fr: catFr, cat_en_label: cat,
       qty: qty, mil: mil, sizes: sizes, skus: skus,
-      spec_url: document.getElementById('edit-spec').value.trim()
+      spec_url: document.getElementById('edit-spec').value.trim(),
+      spec_url_en: document.getElementById('edit-spec-en').value.trim()
     };
     var productId;
     if(editIdx !== null){
       productId = P[editIdx].id;
       var updated = await supaUpdateProduct(productId, payload);
-      P[editIdx] = Object.assign({}, P[editIdx], payload, {img: updated.img_url || P[editIdx].img, spec: payload.spec_url});
+      P[editIdx] = Object.assign({}, P[editIdx], payload, {img: updated.img_url || P[editIdx].img, spec: payload.spec_url, spec_en: payload.spec_url_en});
     } else {
       payload.sort_order = P.length ? Math.max.apply(null, P.map(function(p){return p.sort_order||0;}))+1 : 0;
       payload.img_url = '';
@@ -1254,7 +1263,7 @@ async function saveEditModal(){
       P.push({
         id: row.id, cat_en: row.cat_en, cat_fr: row.cat_fr, cat_en_label: row.cat_en_label,
         name_en: row.name_en, name_fr: row.name_fr, skus: row.skus||[], sizes: row.sizes||[],
-        qty: row.qty||'', mil: row.mil||'', img: row.img_url||'', spec: row.spec_url||'', sort_order: row.sort_order||0
+        qty: row.qty||'', mil: row.mil||'', img: row.img_url||'', spec: row.spec_url||'', spec_en: row.spec_url_en||'', sort_order: row.sort_order||0
       });
     }
     // Cost: upsert or delete based on input
@@ -1749,9 +1758,11 @@ function neobexBadgeHTML(p){
 }
 
 var _docSvg = '<svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>';
+function specFor(p){ return lg==='fr' ? (p.spec||p.spec_en||'') : (p.spec_en||p.spec||''); }
 function specBadgeHTML(p){
-  if(!p.spec) return '';
-  return '<a class="spec-pill" href="'+String(p.spec).replace(/"/g,'&quot;')+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="'+(lg==='fr'?'Ouvrir la fiche technique (PDF)':'Open technical data sheet (PDF)')+'">'+_docSvg+(lg==='fr'?'Fiche':'Spec')+'</a>';
+  var u = specFor(p);
+  if(!u) return '';
+  return '<a class="spec-pill" href="'+String(u).replace(/"/g,'&quot;')+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="'+(lg==='fr'?'Ouvrir la fiche technique (PDF)':'Open technical data sheet (PDF)')+'">'+_docSvg+(lg==='fr'?'Fiche':'Spec')+'</a>';
 }
 
 // === FICHE PRODUIT DÉTAILLÉE ===
@@ -1806,7 +1817,7 @@ function openDetail(pid){
     + '<div class="detail-name">'+_escHtml(name)+(p.mil?' <span class="mil">'+_escHtml(p.mil)+'</span>':'')+'</div>'
     + (showAlt ? '<div class="detail-name-en">'+_escHtml(altName)+'</div>' : '')
     + '<div class="detail-specs">'+specs+'</div>'
-    + (p.spec ? '<a class="detail-doc" href="'+_escHtml(p.spec)+'" target="_blank" rel="noopener">'
+    + (specFor(p) ? '<a class="detail-doc" href="'+_escHtml(specFor(p))+'" target="_blank" rel="noopener">'
         + '<span class="dd-icon">PDF</span>'
         + '<span class="dd-txt"><strong>'+(lg==='fr'?'Fiche technique':'Technical data sheet')+'</strong><small>'+(lg==='fr'?'Spécifications, normes et certifications':'Specifications, standards and certifications')+'</small></span>'
         + '<span class="dd-go">'+(lg==='fr'?'Ouvrir':'Open')+' <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="M7 17 17 7"/><path d="M7 7h10v10"/></svg></span>'
